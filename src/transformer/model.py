@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from math import sqrt
+from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 
 #dot product for attention
 def scaled_dot_product_attention(query, key, value):
@@ -127,8 +129,7 @@ class Transformer(nn.Module):
         x = self.clasifier(x)
         return x
 
-
-class Config():    #pass all variables for models
+class EmotionConfig():    #pass all variables for models
     def __init__(self, src_vocab_size, hidden_size, num_attention_heads, forward_intermediate_size, hidden_dropout_prob, max_seq_length, num_of_encode_layers, num_of_classes):
         super().__init__()     
         self.src_vocal_size = src_vocab_size
@@ -140,3 +141,78 @@ class Config():    #pass all variables for models
         self.num_of_encode_layers = num_of_encode_layers
         self.num_of_classes = num_of_classes
 
+class EmotionDataset(Dataset):
+    def __init__(self, X_data, y_data, tokenizer, pad_token_id):
+        #tokenize and vectorize text
+        self.text = X_data.values.tolist()
+        self.text = tokenizer(self.text)
+        self.text = self.text["input_ids"]
+
+        #load labels
+        self.label = y_data.values.tolist()
+
+    def __len__(self):
+        return len(self.label)
+    
+    def get_sequence_token(self, idx):
+        sequence = self.text[idx]
+        len_seq = len(sequence)
+        return sequence, len_seq
+    
+    def get_labels(self, idx):
+      return self.label[idx]
+    
+    def __getitem__(self, idx):
+      sequence, len_seq = self.get_sequence_token(idx)
+      label = self.get_labels(idx)
+      return sequence, label, len_seq 
+
+    
+def train(model, X_data, y_data, tokenizer, pad_token_id, epochs, lr, bs, device):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=lr)
+    train_dataset = EmotionDataset(X_data,y_data,tokenizer,pad_token_id)
+    train_dataloader = DataLoader(train_dataset, num_workers=1, batch_size=bs, collate_fn=collate_fn,shuffle=True)
+
+    #training loop
+    for epoch in range(epochs):
+        total_loss_train = 0
+        total_acc_train = 0   
+        for train_sequence, train_label in tqdm(train_dataloader):
+
+            # Model prediction
+            predictions = model(train_sequence.to(device))
+            labels = train_label.to(device)
+            loss = criterion(predictions, labels)
+
+            # Calculate accuracy and loss per batch
+            correct = predictions.argmax(axis=1) == labels
+            acc = correct.sum().item() / correct.size(0)
+            total_acc_train += correct.sum().item()
+            total_loss_train += loss.item()
+
+            # Backprop
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+            optimizer.step()
+
+        print(f'Epochs: {epoch + 1} | Loss: {total_loss_train / len(train_dataset): .3f} | Accuracy: {total_acc_train / len(train_dataset): .3f}')
+
+def collate_fn(batch):
+
+    sequences, labels, lengths = zip(*batch)
+    max_len = max(lengths)
+
+    for i in range(len(batch)):
+        if len(sequences[i]) != max_len:
+          for j in range(len(sequences[i]),max_len):
+            sequences[i].append(0)
+
+    return torch.tensor(sequences, dtype=torch.long), torch.tensor(labels, dtype=torch.long)
+
+def calculate_max_seq_length(X_train, X_val, X_test, tokenizer):
+    text = X_train.values.tolist()
+    text.extend(X_val.values.tolist())
+    text.extend(X_test.values.tolist())
+    text = tokenizer(text)
+    text = text["input_ids"]
