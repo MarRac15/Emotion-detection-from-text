@@ -93,24 +93,28 @@ class EncoderLayer(nn.Module):
         return x
   
 class EmotionClassifier(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, intermediate_size=50):
         super().__init__()
         embed_size = config.hidden_size
         num_of_classes = config.num_of_classes
+        intermediate_size = embed_size // 2
 
-        self.fc1 = nn.Linear(embed_size, num_of_classes)
+        self.fc1 = nn.Linear(embed_size, intermediate_size)
+        self.fc2 = nn.Linear(intermediate_size, num_of_classes)
     
     def forward(self, x):
         x = x.mean(dim=1)
-        return self.fc1(x)# IMPRTANT FIX THSI! change to use softmax etc since there are more classes!
-
+        x = self.fc1(x)
+        x = torch.relu(x)
+        x = self.fc2(x)
+        return x
 
 class Transformer(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.embed_size = config.hidden_size
-        self.encoder_embedding = nn.Embedding(config.src_vocab_size, embed_size)
-        self.positional_encoding = PositionalEncoding(embed_size, config.max_seq_length)
+        self.encoder_embedding = nn.Embedding(config.src_vocab_size, self.embed_size)
+        self.positional_encoding = PositionalEncoding(self.embed_size, config.max_seq_length)
 
         self.encode_layers = nn.ModuleList([EncoderLayer(config) for _ in range(config.num_of_encode_layers)])
 
@@ -135,3 +139,5 @@ class Config():    #pass all variables for models
         self.max_seq_length = max_seq_length # find by the longest entry in database
         self.num_of_encode_layers = num_of_encode_layers
         self.num_of_classes = num_of_classes
+
+
