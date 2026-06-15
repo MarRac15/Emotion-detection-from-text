@@ -116,7 +116,7 @@ class Transformer(nn.Module):
         super().__init__()
         self.embed_size = config.hidden_size
         self.encoder_embedding = nn.Embedding(config.src_vocab_size, self.embed_size)
-        self.positional_encoding = PositionalEncoding(self.embed_size, config.max_seq_length)
+        self.positional_encoding = PositionalEncoding(config.max_seq_length)
 
         self.encode_layers = nn.ModuleList([EncoderLayer(config) for _ in range(config.num_of_encode_layers)])
 
@@ -132,7 +132,7 @@ class Transformer(nn.Module):
 class EmotionConfig():    #pass all variables for models
     def __init__(self, src_vocab_size, hidden_size, num_attention_heads, forward_intermediate_size, hidden_dropout_prob, max_seq_length, num_of_encode_layers, num_of_classes):
         super().__init__()     
-        self.src_vocal_size = src_vocab_size
+        self.src_vocab_size = src_vocab_size
         self.hidden_size = hidden_size
         self.num_attention_heads = num_attention_heads
         self.intermediate_size = forward_intermediate_size
