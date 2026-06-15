@@ -116,7 +116,7 @@ class Transformer(nn.Module):
         super().__init__()
         self.embed_size = config.hidden_size
         self.encoder_embedding = nn.Embedding(config.src_vocab_size, self.embed_size)
-        self.positional_encoding = PositionalEncoding(config.max_seq_length)
+        self.positional_encoding = PositionalEncoding(config)
 
         self.encode_layers = nn.ModuleList([EncoderLayer(config) for _ in range(config.num_of_encode_layers)])
 
@@ -216,3 +216,8 @@ def calculate_max_seq_length(X_train, X_val, X_test, tokenizer):
     text.extend(X_test.values.tolist())
     text = tokenizer(text)
     text = text["input_ids"]
+    max_length = 0
+    for t in text:
+        if len(t) > max_length:
+            max_length  = len(t)
+    return max_length
