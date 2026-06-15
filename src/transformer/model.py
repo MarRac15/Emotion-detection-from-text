@@ -183,8 +183,9 @@ def train(model, X_data, y_data, tokenizer, epochs, lr, bs, device):
     for epoch in range(epochs):
         total_loss_train = 0
         total_acc_train = 0   
-        for train_sequence, train_label in tqdm(train_dataloader):
+        
 
+        for train_sequence, train_label in tqdm(train_dataloader):
             # Model prediction
             predictions = model(train_sequence.to(device))
             labels = train_label.to(device)

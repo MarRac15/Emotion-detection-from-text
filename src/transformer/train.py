@@ -38,8 +38,8 @@ tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/llama-tokenizer")
 
 tokenizer.add_special_tokens({'pad_token':'[PAD]'})
 
-vocabulary_size = tokenizer.vocab_size
-hidden_size = 2700
+vocabulary_size = len(tokenizer)
+hidden_size = 680
 pad_token_id = tokenizer.pad_token_id
 max_seq_length = calculate_max_seq_length(X_train, X_val, X_test, tokenizer)
 num_of_classes = len(y_train.values.tolist())
@@ -55,6 +55,7 @@ config = EmotionConfig(src_vocab_size=vocabulary_size,
                        )
 
 transformer_model = Transformer(config).to(device)
+
 
 train(transformer_model, X_train, y_train, tokenizer, epochs=10, lr=0.001, bs=10, device=device)
 
