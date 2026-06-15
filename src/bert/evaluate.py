@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from dataset import EmotionDataset
+from src.bert.dataset import EmotionDataset
 
 TRAIN_PATH = "resources/data/train.csv"
 TEST_PATH = "resources/data/test.csv"
