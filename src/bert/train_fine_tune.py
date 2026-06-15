@@ -1,10 +1,11 @@
 from sklearn.metrics import accuracy_score, f1_score
 import torch
 import pandas as pd
-from torch.utils.data import Dataset, DataLoader, TensorDataset, RandomSampler, SequentialSampler
+from torch.utils.data import Dataset, DataLoader
 from torch.optim import AdamW
 from transformers import BertTokenizer, BertForSequenceClassification, get_linear_schedule_with_warmup
 from tqdm import tqdm
+from dataset import EmotionDataset
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -40,34 +41,6 @@ print(encoding["attention_mask"])
 print()
 
 
-#define the dataset
-class EmotionDataset(Dataset):
-
-    def __init__(self, texts, labels, tokenizer, max_length=128):
-        self.texts = texts
-        self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-
-    def __len__(self):
-        return len(self.texts)
-
-    def __getitem__(self, idx):
-
-        encoding = self.tokenizer(
-            self.texts[idx],
-            truncation=True,
-            padding="max_length",
-            max_length=self.max_length
-        )
-
-        return {
-            "input_ids": torch.tensor(encoding["input_ids"], dtype=torch.long),
-            "attention_mask": torch.tensor(encoding["attention_mask"], dtype=torch.long),
-            "labels": torch.tensor(self.labels[idx], dtype=torch.long)
-        }
-    
-
 train_dataset = EmotionDataset(
     texts=train_df["clean_text"],
     labels=train_df["label_id"],
@@ -80,11 +53,6 @@ val_dataset = EmotionDataset(
     tokenizer=tokenizer,
 )
 
-test_dataset = EmotionDataset(
-    texts=test_df["clean_text"],
-    labels=test_df["label_id"],
-    tokenizer=tokenizer,
-)
 
 #dataloaders:
 train_loader = DataLoader(
@@ -99,11 +67,6 @@ val_loader = DataLoader(
     shuffle=False
 )
 
-test_loader = DataLoader(
-    test_dataset,
-    batch_size=16,
-    shuffle=False
-)
 
 print("Rozmiar batchy: ")
 batch = next(iter(train_loader))
