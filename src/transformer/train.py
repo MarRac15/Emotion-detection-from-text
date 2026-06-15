@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 from transformers import AutoTokenizer
 from model import EmotionConfig, calculate_max_seq_length, train, Transformer
+from model import EmotionDataset
 
 TRAIN_PATH = "resources/data/train.csv"
 TEST_PATH = "resources/data/test.csv"
@@ -38,7 +39,7 @@ tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/llama-tokenizer")
 tokenizer.add_special_tokens({'pad_token':'[PAD]'})
 
 vocabulary_size = tokenizer.vocab_size
-hidden_size = 768
+hidden_size = 2700
 pad_token_id = tokenizer.pad_token_id
 max_seq_length = calculate_max_seq_length(X_train, X_val, X_test, tokenizer)
 num_of_classes = len(y_train.values.tolist())
@@ -53,9 +54,11 @@ config = EmotionConfig(src_vocab_size=vocabulary_size,
                        num_of_classes=num_of_classes
                        )
 
-transformer_model = Transformer(config)
+transformer_model = Transformer(config).to(device)
 
-train(transformer_model, X_train, y_train, tokenizer, pad_token_id, epochs=10, lr=0.001, bs=10, device=device)
+train(transformer_model, X_train, y_train, tokenizer, epochs=10, lr=0.001, bs=10, device=device)
 
 print("prediction of i am so sad")
-print(predict("I am so sad"))
+print(predict("I am so sad",tokenizer,transformer_model,device))
+
+

@@ -88,7 +88,7 @@ class EncoderLayer(nn.Module):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, x):#add mask in necessary
-        attn_output = self.attention(x,x,x) #here pass mask if necessary
+        attn_output = self.attention(x) #here pass mask if necessary
         x = self.norm1(x + self.dropout(attn_output))
         ff_output = self.feed_forward(x)
         x = self.norm2(x + self.dropout(ff_output))
@@ -125,7 +125,8 @@ class Transformer(nn.Module):
     def forward(self, x):
         x = self.encoder_embedding(x) * sqrt(self.embed_size)
         x = self.positional_encoding(x)
-        x = self.encode_layers(x)
+        for layer in self.encode_layers:
+            x = layer(x)
         x = self.clasifier(x)
         return x
 
@@ -142,12 +143,10 @@ class EmotionConfig():    #pass all variables for models
         self.num_of_classes = num_of_classes
 
 class EmotionDataset(Dataset):
-    def __init__(self, X_data, y_data, tokenizer, pad_token_id):
+    def __init__(self, X_data, y_data, tokenizer):
         #tokenize and vectorize text
         self.text = X_data.values.tolist()
-        self.text = tokenizer(self.text)
-        self.text = self.text["input_ids"]
-
+        self.tokenizer = tokenizer
         #load labels
         self.label = y_data.values.tolist()
 
@@ -155,7 +154,7 @@ class EmotionDataset(Dataset):
         return len(self.label)
     
     def get_sequence_token(self, idx):
-        sequence = self.text[idx]
+        sequence = self.tokenizer.encode(self.text[idx])#check if correct
         len_seq = len(sequence)
         return sequence, len_seq
     
@@ -167,12 +166,18 @@ class EmotionDataset(Dataset):
       label = self.get_labels(idx)
       return sequence, label, len_seq 
 
-    
-def train(model, X_data, y_data, tokenizer, pad_token_id, epochs, lr, bs, device):
+from transformers import AutoTokenizer  
+#check what pad_idx would be by adding it to tokenizer
+tokenizer_temp = AutoTokenizer.from_pretrained("hf-internal-testing/llama-tokenizer")
+
+tokenizer_temp.add_special_tokens({'pad_token':'[PAD]'})
+pad_token_id = tokenizer_temp.pad_token_id
+
+def train(model, X_data, y_data, tokenizer, epochs, lr, bs, device):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=lr)
-    train_dataset = EmotionDataset(X_data,y_data,tokenizer,pad_token_id)
-    train_dataloader = DataLoader(train_dataset, num_workers=1, batch_size=bs, collate_fn=collate_fn,shuffle=True)
+    train_dataset = EmotionDataset(X_data,y_data,tokenizer)
+    train_dataloader = DataLoader(train_dataset, num_workers=0, batch_size=bs, collate_fn=collate_fn,shuffle=True)
 
     #training loop
     for epoch in range(epochs):
@@ -205,8 +210,8 @@ def collate_fn(batch):
 
     for i in range(len(batch)):
         if len(sequences[i]) != max_len:
-          for j in range(len(sequences[i]),max_len):
-            sequences[i].append(0)
+            for j in range(len(sequences[i]),max_len):
+                sequences[i].append(pad_token_id)
 
     return torch.tensor(sequences, dtype=torch.long), torch.tensor(labels, dtype=torch.long)
 
@@ -221,3 +226,6 @@ def calculate_max_seq_length(X_train, X_val, X_test, tokenizer):
         if len(t) > max_length:
             max_length  = len(t)
     return max_length
+
+
+    
