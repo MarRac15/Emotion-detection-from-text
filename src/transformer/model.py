@@ -140,4 +140,3 @@ class Config():    #pass all variables for models
         self.num_of_encode_layers = num_of_encode_layers
         self.num_of_classes = num_of_classes
 
-
